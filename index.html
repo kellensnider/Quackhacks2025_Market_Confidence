@@ -931,6 +931,7 @@
      * When you plug in real APIs, you can transform their raw values
      * into this structure before rendering.
      */
+    const API_BASE = "http://127.0.0.1:8000/api";  
     const initialMarkets = [
       {
         id: "stocks",
@@ -1271,61 +1272,95 @@
      *
      * Right now it uses mock data and a timeout so the structure is clear.
      */
-    async function refreshDataFromAPIs() {
-      state.loading = true;
-      state.error = null;
-      renderStatusBanner();
+    function updateMarketFromScore(market, newScore) {
+  if (typeof newScore !== "number" || Number.isNaN(newScore)) return market;
 
-      try {
-        // Example: Fetching from multiple sources in parallel
-        // -----------------------------------------------
-        // 1. POLYMARKET (replace the URL with the real endpoint):
-        //
-        // const polymarketResponse = await fetch("https://api.polymarket.com/markets");
-        // if (!polymarketResponse.ok) throw new Error("Polymarket fetch failed");
-        // const polymarketJson = await polymarketResponse.json();
-        //
-        // 2. OTHER ASSET APIS:
-        //
-        // const stockApi = fetch("https://your-stock-api.example.com/confidence");
-        // const housingApi = fetch("https://your-housing-api.example.com/confidence");
-        // const [stockRes, housingRes] = await Promise.all([stockApi, housingApi]);
-        //
-        // Then transform those responses into the standardized shape
-        // of our `markets` array (id, name, confidence, change24h, dataPoints).
-        //
-        // For this demo, we just simulate a network delay and small random moves:
+  const prev = market.confidence;
+  const change = newScore - prev;
+  const newDataPoints = [...market.dataPoints, newScore].slice(-7);
 
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        state.markets = state.markets.map((m) => {
-          const jitter = (Math.random() - 0.5) * 4; // -2 to +2 percentage points
-          const nextConfidence = Math.max(
-            0,
-            Math.min(100, m.confidence + jitter)
-          );
-
-          const newPoint = nextConfidence;
-          const nextDataPoints = [...m.dataPoints, newPoint].slice(-7);
-
-          return {
-            ...m,
-            confidence: nextConfidence,
-            change24h: jitter,
-            dataPoints: nextDataPoints,
-          };
-        });
-
-        state.loading = false;
-        state.error = null;
-      } catch (err) {
-        console.error("Error refreshing data:", err);
-        state.loading = false;
-        state.error = err.message || "Unknown error";
-      }
-
-      renderDashboard();
+  return {
+        ...market,
+        confidence: newScore,
+        change24h: change,
+        dataPoints: newDataPoints,
+      };
     }
+async function refreshDataFromAPIs() {
+  state.loading = true;
+  state.error = null;
+  renderStatusBanner();
+
+  try {
+    // 1. Hit your Python backend
+    const [confRes, assetsRes] = await Promise.all([
+      fetch(`${API_BASE}/confidence`),
+      fetch(`${API_BASE}/assets`),
+    ]);
+
+    if (!confRes.ok || !assetsRes.ok) {
+      throw new Error("Backend responded with an error");
+    }
+
+    const confidenceData = await confRes.json();
+    const assetsData = await assetsRes.json();
+
+    const indicators = assetsData.indicators || [];
+
+    const findAsset = (id) => indicators.find((a) => a.assetId === id);
+
+    // Pull out some useful scores from backend
+    const stocksScore = confidenceData.marketConfidence;         // 0–100
+    const riskAppetiteScore = confidenceData.riskAppetite;       // 0–100
+    const macroStabilityScore = confidenceData.macroStability;   // 0–100
+
+    const btcAsset = findAsset("btc");
+    const housingAsset = findAsset("housing");
+    const goldAsset = findAsset("gold");
+
+    const btcScore = btcAsset ? btcAsset.momentumScore : null;
+    const housingScore = housingAsset ? housingAsset.momentumScore : null;
+    // For gold, higher gold = more fear, so invert for "confidence"
+    const goldScore = goldAsset ? 100 - goldAsset.momentumScore : null;
+
+    // 2. Build the updated markets array
+    const nextMarkets = state.markets.map((m) => {
+      switch (m.id) {
+        case "stocks":
+          return updateMarketFromScore(m, stocksScore);
+        case "bitcoin":
+          return updateMarketFromScore(m, btcScore);
+        case "housing":
+          return updateMarketFromScore(m, housingScore);
+        case "etfs":
+          // Use risk appetite index for thematic ETFs
+          return updateMarketFromScore(m, riskAppetiteScore);
+        case "gold":
+          return updateMarketFromScore(m, goldScore);
+        case "rates":
+          // Use macro stability as a proxy for rate confidence
+          return updateMarketFromScore(m, macroStabilityScore);
+        case "usd":
+          // We don't have USD strength yet – keep it as-is for now
+          return m;
+        default:
+          return m;
+      }
+    });
+
+    state.markets = nextMarkets;
+    state.loading = false;
+    state.error = null;
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+    state.loading = false;
+    state.error = err.message || "Unknown error";
+
+    // OPTIONAL: if backend fails, you can fall back to the old jitter logic here
+  }
+
+  renderDashboard();
+}
 
     // ---------------------------------
     // Initialization
