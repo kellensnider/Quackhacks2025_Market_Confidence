@@ -830,7 +830,7 @@
     <div class="nav-right">
       <div class="pill-badge">
         <span class="pill-dot"></span>
-        Live-ready data
+        Live-ready mock data
       </div>
       <button id="themeToggle" class="theme-toggle-btn" type="button">
         <span class="theme-toggle-icon">🌞</span>
@@ -877,8 +877,7 @@
       <div class="sidebar-divider"></div>
 
       <div class="sidebar-footnote">
-        All values shown are currently derived from your backend and
-        for demonstration only. You can
+        All values shown are mock data and for demonstration only. You can
         plug in <strong>Polymarket</strong> and other APIs in the script
         section to power this dashboard with real-time or daily data.
       </div>
@@ -907,11 +906,6 @@
         <div id="overviewGrid" class="overview-grid">
           <!-- Confidence cards injected here -->
         </div>
-
-        <div id="polymarketStrip" class="section-subtitle" style="margin-top: 0.75rem;">
-            <!-- Polymarket signals injected here -->
-          </div>
-          
       </section>
 
       <!-- Detailed sections (one per market) -->
@@ -930,8 +924,14 @@
     // Core data model & initial state
     // -------------------------------
 
-    const API_BASE = "http://127.0.0.1:8000/api";
-
+    /**
+     * Each market object uses a normalized confidence score (0–100),
+     * and a percentage change over the selected time window.
+     *
+     * When you plug in real APIs, you can transform their raw values
+     * into this structure before rendering.
+     */
+    const API_BASE = "http://127.0.0.1:8000/api";  
     const initialMarkets = [
       {
         id: "stocks",
@@ -941,7 +941,6 @@
         confidence: 68,
         change24h: 2.4,
         dataPoints: [55, 58, 60, 63, 61, 64, 68],
-        price: null,
       },
       {
         id: "bitcoin",
@@ -951,7 +950,6 @@
         confidence: 61,
         change24h: -1.2,
         dataPoints: [70, 68, 66, 65, 64, 63, 61],
-        price: null,
       },
       {
         id: "housing",
@@ -961,7 +959,6 @@
         confidence: 57,
         change24h: 0.3,
         dataPoints: [52, 54, 55, 56, 57, 57, 57],
-        price: null,
       },
       {
         id: "etfs",
@@ -971,7 +968,6 @@
         confidence: 64,
         change24h: 1.1,
         dataPoints: [60, 61, 63, 62, 63, 64, 64],
-        price: null,
       },
       {
         id: "gold",
@@ -981,7 +977,6 @@
         confidence: 72,
         change24h: 0.9,
         dataPoints: [65, 66, 68, 69, 70, 71, 72],
-        price: null,
       },
       {
         id: "rates",
@@ -991,7 +986,6 @@
         confidence: 49,
         change24h: -0.7,
         dataPoints: [55, 53, 52, 51, 50, 49, 49],
-        price: null,
       },
       {
         id: "usd",
@@ -1001,7 +995,6 @@
         confidence: 66,
         change24h: 1.7,
         dataPoints: [60, 61, 62, 63, 64, 65, 66],
-        price: null,
       },
     ];
 
@@ -1071,10 +1064,6 @@
     function createConfidenceCardHTML(market) {
       const trend = getTrendInfo(market.change24h);
       const label = getConfidenceLabel(market.confidence);
-      const priceSuffix =
-        market.price != null
-          ? ` • Last close: $${market.price.toFixed(2)}`
-          : "";
 
       return `
         <article class="confidence-card">
@@ -1095,7 +1084,7 @@
 
           <div class="card-bottom-row">
             ${createSparklineHTML(market.dataPoints)}
-            <div class="confidence-label">${label}${priceSuffix}</div>
+            <div class="confidence-label">${label}</div>
           </div>
         </article>
       `;
@@ -1125,7 +1114,7 @@
         text.textContent = "Status: error loading data";
       } else {
         dot.className = "status-dot ok";
-        text.textContent = "Status: live data from backend";
+        text.textContent = "Status: mock data (refresh to plug in APIs)";
       }
     }
 
@@ -1138,10 +1127,6 @@
 
         const trend = getTrendInfo(market.change24h);
         const label = getConfidenceLabel(market.confidence);
-        const priceText =
-          market.price != null
-            ? `Live price: $${market.price.toFixed(2)}. `
-            : "";
 
         section.innerHTML = `
           <div class="section-header">
@@ -1185,17 +1170,13 @@
                     <span>${trend.label}</span>
                   </div>
                   <div class="market-confidence-text">
-                    vs. previous ${state.timeRange} window${
-                      market.price != null
-                        ? `<br/>Last close: $${market.price.toFixed(2)}`
-                        : ""
-                    }
+                    vs. previous ${state.timeRange} window
                   </div>
                 </div>
               </div>
 
               <p class="market-commentary">
-                ${priceText}${label} in the ${market.name.toLowerCase()} reflects a blend of positioning,
+                ${label} in the ${market.name.toLowerCase()} reflects a blend of positioning,
                 volatility, and macro expectations. You can replace this text with
                 commentary generated from real API data (for example, Polymarket
                 probability shifts or ETF flow data).
@@ -1216,47 +1197,6 @@
         `;
       });
     }
-
-    function renderCommentaryFromBackend(commentaryById) {
-  // commentaryById: { stocks: "...", bitcoin: "...", ... }
-  state.markets.forEach((market) => {
-    const section = document.querySelector(
-      `.market-section[data-market-id="${market.id}"]`
-    );
-    if (!section) return;
-
-    const backendText = commentaryById[market.id];
-    if (!backendText) return;
-
-    const p = section.querySelector(".market-commentary");
-    if (!p) return;
-
-    p.textContent = backendText;
-  });
-}
-
-function renderPolymarketStrip(signals) {
-  const container = el("#polymarketStrip");
-  if (!container) return;
-
-  if (!Array.isArray(signals) || signals.length === 0) {
-    container.textContent =
-      "Polymarket: no macro markets loaded yet. Check your API filters.";
-    return;
-  }
-
-  const top = signals.slice(0, 4);
-  const items = top
-    .map((s) => {
-      const prob = (s.impliedProb * 100).toFixed(1);
-      return `<span>${prob}% · ${s.description}</span>`;
-    })
-    .join(" · ");
-
-  container.innerHTML = `Polymarket macro odds: ${items}`;
-}
-
-
 
     function renderTheme() {
       const button = el("#themeToggle");
@@ -1323,66 +1263,56 @@ function renderPolymarketStrip(signals) {
     }
 
     // ---------------------
-    // API integration
+    // API integration (mock)
     // ---------------------
 
+    /**
+     * This function shows how you could structure async fetching
+     * from multiple APIs (Polymarket, price feeds, etc.).
+     *
+     * Right now it uses mock data and a timeout so the structure is clear.
+     */
     function updateMarketFromScore(market, newScore) {
-      if (typeof newScore !== "number" || Number.isNaN(newScore)) return market;
+  if (typeof newScore !== "number" || Number.isNaN(newScore)) return market;
 
-      const prev = market.confidence;
-      const change = newScore - prev;
-      const newDataPoints = [...market.dataPoints, newScore].slice(-7);
+  const prev = market.confidence;
+  const change = newScore - prev;
+  const newDataPoints = [...market.dataPoints, newScore].slice(-7);
 
-      return {
+  return {
         ...market,
         confidence: newScore,
         change24h: change,
         dataPoints: newDataPoints,
       };
     }
-
-    async function refreshDataFromAPIs() {
+async function refreshDataFromAPIs() {
   state.loading = true;
   state.error = null;
   renderStatusBanner();
 
   try {
-    const [confRes, assetsRes, commentaryRes, polyRes] = await Promise.all([
+    // 1. Hit your Python backend
+    const [confRes, assetsRes] = await Promise.all([
       fetch(`${API_BASE}/confidence`),
       fetch(`${API_BASE}/assets`),
-      fetch(`${API_BASE}/commentary`),
-      fetch(`${API_BASE}/polymarket/signals`),
     ]);
 
-    if (!confRes.ok || !assetsRes.ok || !commentaryRes.ok || !polyRes.ok) {
+    if (!confRes.ok || !assetsRes.ok) {
       throw new Error("Backend responded with an error");
     }
 
     const confidenceData = await confRes.json();
     const assetsData = await assetsRes.json();
-    const commentaryData = await commentaryRes.json();
-    const polymarketSignals = await polyRes.json();
 
     const indicators = assetsData.indicators || [];
-    const series = assetsData.series || [];
 
     const findAsset = (id) => indicators.find((a) => a.assetId === id);
 
-    const latestPriceById = {};
-    series.forEach((s) => {
-      const data = s.data || [];
-      if (data.length > 0) {
-        const last = data[data.length - 1];
-        latestPriceById[s.assetId] =
-          typeof last.close === "number" ? last.close : null;
-      }
-    });
-    const getLatestPrice = (id) => latestPriceById[id] ?? null;
-
-    // Confidence scores
-    const stocksScore = confidenceData.marketConfidence;
-    const riskAppetiteScore = confidenceData.riskAppetite;
-    const macroStabilityScore = confidenceData.macroStability;
+    // Pull out some useful scores from backend
+    const stocksScore = confidenceData.marketConfidence;         // 0–100
+    const riskAppetiteScore = confidenceData.riskAppetite;       // 0–100
+    const macroStabilityScore = confidenceData.macroStability;   // 0–100
 
     const btcAsset = findAsset("btc");
     const housingAsset = findAsset("housing");
@@ -1390,93 +1320,94 @@ function renderPolymarketStrip(signals) {
 
     const btcScore = btcAsset ? btcAsset.momentumScore : null;
     const housingScore = housingAsset ? housingAsset.momentumScore : null;
+    // For gold, higher gold = more fear, so invert for "confidence"
     const goldScore = goldAsset ? 100 - goldAsset.momentumScore : null;
-    const usdScore =
-      typeof macroStabilityScore === "number" &&
-      typeof riskAppetiteScore === "number"
-        ? 0.4 * macroStabilityScore + 0.6 * riskAppetiteScore
-        : null;
 
+    // 2. Build the updated markets array
     const nextMarkets = state.markets.map((m) => {
-      let updated = m;
-      let price = m.price ?? null;
-
       switch (m.id) {
         case "stocks":
-          updated = updateMarketFromScore(m, stocksScore);
-          price = getLatestPrice("sp500");
-          break;
+          return updateMarketFromScore(m, stocksScore);
         case "bitcoin":
-          updated = updateMarketFromScore(m, btcScore);
-          price = getLatestPrice("btc");
-          break;
+          return updateMarketFromScore(m, btcScore);
         case "housing":
-          updated = updateMarketFromScore(m, housingScore);
-          price = getLatestPrice("housing");
-          break;
+          return updateMarketFromScore(m, housingScore);
         case "etfs":
-          updated = updateMarketFromScore(m, riskAppetiteScore);
-          price = getLatestPrice("tech_etf");
-          break;
+          // Use risk appetite index for thematic ETFs
+          return updateMarketFromScore(m, riskAppetiteScore);
         case "gold":
-          updated = updateMarketFromScore(m, goldScore);
-          price = getLatestPrice("gold");
-          break;
+          return updateMarketFromScore(m, goldScore);
         case "rates":
-          updated = updateMarketFromScore(m, macroStabilityScore);
-          price = getLatestPrice("us10y");
-          break;
+          // Use macro stability as a proxy for rate confidence
+          return updateMarketFromScore(m, macroStabilityScore);
         case "usd":
-          updated = updateMarketFromScore(m, usdScore);
-          price = getLatestPrice("cpi");
-          break;
+          // We don't have USD strength yet – keep it as-is for now
+          return m;
         default:
-          break;
+          return m;
       }
-
-      if (price != null && !Number.isNaN(price)) {
-        return { ...updated, price };
-      }
-      return updated;
     });
 
     state.markets = nextMarkets;
     state.loading = false;
     state.error = null;
-
-    renderDashboard();
-    renderCommentaryFromBackend(commentaryData);
-    renderPolymarketStrip(polymarketSignals);
   } catch (err) {
     console.error("Error refreshing data:", err);
     state.loading = false;
     state.error = err.message || "Unknown error";
-    renderDashboard();
-  }
-}
 
+    // OPTIONAL: if backend fails, you can fall back to the old jitter logic here
+  }
+
+  renderDashboard();
+}
 
     // ---------------------------------
     // Initialization
     // ---------------------------------
 
     document.addEventListener("DOMContentLoaded", () => {
-  setupThemeToggle();
-  setupTimeRangeChips();
-  renderDashboard();
-  refreshDataFromAPIs();
-  // Auto-refresh every 60 seconds
-  setInterval(refreshDataFromAPIs, 60000);
-});
+      setupThemeToggle();
+      setupTimeRangeChips();
+      renderDashboard();
 
+      // Simulate an initial "API refresh" after page load.
+      // You can call this on an interval if you want auto-updates.
+      refreshDataFromAPIs();
+    });
 
     // -------------------------------
-    // HOW TO EXTEND WITH MORE APIs:
+    // HOW TO PLUG IN REAL API DATA:
     // -------------------------------
     //
-    // You can add additional calls (e.g. /api/polymarket/signals) inside
-    // refreshDataFromAPIs(), then fold that into the commentary text
-    // or additional tags without changing the layout.
+    // 1. Inside refreshDataFromAPIs(), replace the mock logic with real fetches:
+    //
+    //    const polymarketResponse = await fetch("https://api.polymarket.com/...");
+    //    const polymarketJson = await polymarketResponse.json();
+    //
+    // 2. Map the API response into your normalized object:
+    //
+    //    function normalizePolymarketMarket(pmMarket) {
+    //      // Example: map Polymarket probability (0–1) to 0–100
+    //      const confidence = pmMarket.probability * 100;
+    //      return {
+    //        id: "stocks", // or another id
+    //        name: pmMarket.question,
+    //        type: "Prediction",
+    //        description: pmMarket.description,
+    //        confidence,
+    //        change24h: pmMarket.change24hPct,
+    //        dataPoints: buildDataPointHistory(pmMarket),
+    //      };
+    //    }
+    //
+    // 3. Use your normalized objects to update state.markets
+    //    and then call renderDashboard().
+    //
+    // 4. To add a new market:
+    //    - Add an object to initialMarkets (id, name, type, description, confidence, change24h, dataPoints)
+    //    - Add a <section> in the HTML with data-market-id="yourNewId"
+    //    - Done: it will automatically appear in the overview and detail section.
   </script>
 </body>
 </html>
