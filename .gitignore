@@ -1,0 +1,44 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+.env
+.venv
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# --- Node / JS ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS-level ---
+.DS_Store
+Thumbs.db
+
+# --- Caches ---
+.cache/
+*.cache
+.cache-loader/
+
+# --- Build outputs ---
+dist/
+build/
+
+# --- IDE ---
+.vscode/
+.idea/
+
+# --- Project-specific ---
+# ignore any generated cache for your hackathon project
+*.db
+.cache/
+tmp/
