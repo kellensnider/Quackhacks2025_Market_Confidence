@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Market Confidence Meter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050710;
+      --bg-elevated: #111626;
+      --bg-elevated-soft: #151a2b;
+      --accent: #3b82f6;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-soft: #1f2937;
+      --danger: #ef4444;
+      --warning: #f97316;
+      --success: #22c55e;
+      --card-radius: 14px;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.35);
+      --transition-fast: 0.25s ease-out;
+      --transition-slow: 0.8s ease-out;
+      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--font-main);
+      background: radial-gradient(circle at top, #111827 0%, #020617 55%, #000 100%);
+      color: var(--text);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      body {
+        padding: 24px 40px;
+      }
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .brand-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand-row h1 {
+      font-size: 1.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #f9fafb;
+    }
+
+    .tagline {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .top-meter-card {
+      margin-top: 6px;
+      background: linear-gradient(135deg, #020617 0%, #020617 40%, #0b1120 100%);
+      border-radius: 18px;
+      padding: 16px 16px 18px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #1e293b;
+    }
+
+    @media (min-width: 768px) {
+      .top-meter-card {
+        padding: 18px 22px 22px;
+      }
+    }
+
+    .top-meter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .top-meter-header span.label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+    }
+
+    .top-meter-header span.badge {
+      font-size: 0.75rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid #4b5563;
+      color: #d1d5db;
+      background: rgba(15, 23, 42, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .top-meter-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    @media (min-width: 640px) {
+      .top-meter-main {
+        grid-template-columns: 2fr auto;
+      }
+    }
+
+    .confidence-bar-outer {
+      position: relative;
+      width: 100%;
+      height: 26px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top, #111827 0%, #020617 70%);
+      overflow: hidden;
+      border: 1px solid #1f2937;
+    }
+
+    .confidence-bar-fill {
+      position: absolute;
+      height: 100%;
+      width: 0%;
+      left: 0;
+      top: 0;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.55);
+      transition:
+        width var(--transition-slow),
+        background-color var(--transition-slow),
+        box-shadow var(--transition-slow);
+    }
+
+    .confidence-bar-labels {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 9px;
+      font-size: 0.7rem;
+      pointer-events: none;
+      color: rgba(209, 213, 219, 0.6);
+    }
+
+    .confidence-score-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .confidence-score-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .confidence-score-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .section-header h2 {
+      font-size: 1.1rem;
+      color: #e5e7eb;
+    }
+
+    .section-header span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1120px) {
+      .cards-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    .card {
+      background: var(--bg-elevated-soft);
+      border-radius: var(--card-radius);
+      border: 1px solid var(--border-soft);
+      padding: 12px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+
+    .card-score {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      border: 1px solid #374151;
+      color: #d1d5db;
+    }
+
+    .mini-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #020617;
+      overflow: hidden;
+      margin: 3px 0 2px;
+    }
+
+    .mini-bar-fill {
+      height: 100%;
+      width: 50%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      transition: width var(--transition-slow), background-color var(--transition-slow);
+    }
+
+    .card-detail-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .card-detail-line span.value {
+      color: #e5e7eb;
+    }
+
+    .card-assets {
+      margin-top: 4px;
+      border-top: 1px solid #1f2937;
+      padding-top: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .asset-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .asset-row .asset-name {
+      color: #e5e7eb;
+    }
+
+    .asset-row .asset-score {
+      color: #e5e7eb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .asset-row .asset-price {
+      margin-left: 4px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .polymarket-wrapper {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 768px) {
+      .polymarket-wrapper {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .polymarket-summary-card {
+      background: var(--bg-elevated-soft);
+      border-radius: var(--card-radius);
+      border: 1px solid var(--border-soft);
+      padding: 12px 12px 14px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .polymarket-list-card {
+      background: var(--bg-elevated-soft);
+      border-radius: var(--card-radius);
+      border: 1px solid var(--border-soft);
+      padding: 12px 12px 10px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .polymarket-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .polymarket-list-header h3 {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+    }
+
+    .pm-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) auto auto;
+      gap: 6px;
+      align-items: center;
+      font-size: 0.75rem;
+      padding: 4px 0;
+      border-bottom: 1px dashed #1f2937;
+    }
+
+    .pm-row:last-child {
+      border-bottom: none;
+    }
+
+    .pm-name {
+      color: #e5e7eb;
+    }
+
+    .pm-prob {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pm-impact {
+      text-align: right;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    footer {
+      margin-top: 6px;
+      background: var(--bg-elevated);
+      border-radius: 18px;
+      border: 1px solid #1e293b;
+      padding: 14px 14px 16px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+    }
+
+    .feedback-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .feedback-header h2 {
+      font-size: 1rem;
+    }
+
+    .feedback-header span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .feedback-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .feedback-body {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-value-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .feedback-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      transition: background-color var(--transition-fast),
+        transform 0.1s ease-out;
+    }
+
+    button:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .feedback-stats {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .feedback-bar {
+      margin-top: 4px;
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #020617;
+      overflow: hidden;
+      border: 1px solid #1f2937;
+    }
+
+    .feedback-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #f97316, #22c55e);
+      transition: width var(--transition-slow);
+    }
+
+    .status-line {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .status-line span {
+      color: #9ca3af;
+    }
+
+    .error-message {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--danger);
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand-row">
+      <h1>Market Confidence Meter</h1>
+      <div class="tagline">
+        Live confidence in the U.S. market, powered by prices&nbsp;&amp;&nbsp;Polymarket.
+      </div>
+    </div>
+
+    <div class="top-meter-card">
+      <div class="top-meter-header">
+        <span class="label">Aggregate Market Confidence</span>
+        <span class="badge">
+          <span style="width: 7px; height: 7px; border-radius: 999px; background: #22c55e;"></span>
+          Live · Auto-refresh
+        </span>
+      </div>
+      <div class="top-meter-main">
+        <div>
+          <div class="confidence-bar-outer">
+            <div class="confidence-bar-fill" id="overall-bar-fill"></div>
+            <div class="confidence-bar-labels">
+              <span>Fear</span>
+              <span>Neutral</span>
+              <span>Optimism</span>
+            </div>
+          </div>
+        </div>
+        <div class="confidence-score-block">
+          <div class="confidence-score-value" id="overall-score-text">--%</div>
+          <div class="confidence-score-sub" id="overall-score-sub">
+            Waiting for data…
+          </div>
+        </div>
+      </div>
+      <div class="status-line">
+        <span id="last-updated">Last updated: --</span>
+      </div>
+      <div class="error-message hidden" id="top-error"></div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="section-header">
+        <h2>Market Drivers</h2>
+        <span>Equities · Crypto · Gold · Bonds · Housing · USD</span>
+      </div>
+      <div class="cards-grid" id="category-cards"></div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <h2>Polymarket Sentiment</h2>
+        <span>Prediction-market probabilities translated into confidence</span>
+      </div>
+      <div class="polymarket-wrapper">
+        <div class="polymarket-summary-card">
+          <div class="card-header">
+            <span class="card-title">Aggregate Sentiment</span>
+            <span class="pill">
+              <span style="width: 7px; height: 7px; border-radius: 999px; background: var(--accent);"></span>
+              Polymarket
+            </span>
+          </div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" id="pm-aggregate-bar" style="width: 50%;"></div>
+          </div>
+          <div class="card-detail-line">
+            <span>Confidence boost from Polymarket</span>
+            <span class="value" id="pm-aggregate-score">--%</span>
+          </div>
+          <div class="card-detail-line">
+            <span>How it's used</span>
+            <span class="value">
+              Adjusts the main meter up/down without overriding fundamentals.
+            </span>
+          </div>
+        </div>
+
+        <div class="polymarket-list-card">
+          <div class="polymarket-list-header">
+            <h3>Tracked Markets</h3>
+            <span class="pill">Probabilities of "good" outcomes</span>
+          </div>
+          <div id="pm-markets-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="feedback-header">
+      <h2>How accurate is today&rsquo;s confidence reading?</h2>
+      <span>Community sentiment · does not change the main meter</span>
+    </div>
+    <div class="feedback-body">
+      <div class="slider-row">
+        <div class="slider-value-label">
+          Your rating:
+          <span id="user-slider-value" style="color: #f9fafb; font-weight: 600;">50</span>%
+        </div>
+        <input
+          type="range"
+          id="feedback-slider"
+          min="0"
+          max="100"
+          value="50"
+        />
+        <div class="feedback-controls">
+          <button id="submit-feedback">Submit rating</button>
+          <div class="feedback-stats">
+            Crowd average:
+            <span id="feedback-average">--%</span>
+            · Votes:
+            <span id="feedback-count">0</span>
+          </div>
+        </div>
+        <div class="feedback-bar">
+          <div class="feedback-bar-fill" id="feedback-bar-fill"></div>
+        </div>
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+        <strong>How to use this:</strong> rate how well the top meter matched your
+        experience in the market today based on your trades, risk, and P&amp;L.
+        <br />
+        These community scores are stored locally in your browser and never touch
+        the core confidence model.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // --------------------------
+    // Global state & config
+    // --------------------------
+    const API_BASE = "http://127.0.0.1:8001";
+
+    const REFRESH_MS = 60_000; // 60s auto refresh
+    const feedbackStorageKey = "market_confidence_feedback_v1";
+
+    const categoryDisplayNames = {
+      equities: "Equities",
+      crypto: "Crypto",
+      gold: "Gold",
+      bonds: "Bonds",
+      housing: "Housing",
+      usd: "USD",
+      polymarket_sentiment: "Polymarket Sentiment",
+    };
+
+    const categoryOrder = [
+      "equities",
+      "crypto",
+      "gold",
+      "bonds",
+      "housing",
+      "usd",
+    ];
+
+    const state = {
+      assetsMeta: {}, // asset_id -> {id, name, category, data_source}
+    };
+
+    // --------------------------
+    // Utility helpers
+    // --------------------------
+    function formatPercent(value) {
+      if (value == null || isNaN(value)) return "--%";
+      return value.toFixed(1).replace(/\.0$/, "") + "%";
+    }
+
+    function formatPrice(value) {
+      if (value == null || isNaN(value)) return "--";
+      if (value >= 1000) {
+        return "$" + value.toFixed(0);
+      }
+      if (value >= 10) {
+        return "$" + value.toFixed(2);
+      }
+      return "$" + value.toFixed(4);
+    }
+
+    function overallColorForScore(score) {
+      if (score <= 30) {
+        return {
+          bg: "linear-gradient(90deg, #b91c1c, #ef4444)",
+          shadow: "0 0 16px rgba(239, 68, 68, 0.55)",
+        };
+      }
+      if (score <= 60) {
+        return {
+          bg: "linear-gradient(90deg, #f97316, #facc15)",
+          shadow: "0 0 16px rgba(234, 179, 8, 0.6)",
+        };
+      }
+      return {
+        bg: "linear-gradient(90deg, #16a34a, #22c55e)",
+        shadow: "0 0 16px rgba(34, 197, 94, 0.65)",
+      };
+    }
+
+    function setElementText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function showError(id, message) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!message) {
+        el.classList.add("hidden");
+        el.textContent = "";
+        return;
+      }
+      el.textContent = message;
+      el.classList.remove("hidden");
+    }
+
+    function formatTimestampDate(date) {
+      return (
+        date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+        " · " +
+        date.toLocaleDateString([], { month: "short", day: "numeric" })
+      );
+    }
+
+    // --------------------------
+    // Fetch helpers
+    // --------------------------
+    async function fetchJSON(path) {
+      const url = API_BASE + path;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status + " for " + path);
+      }
+      return res.json();
+    }
+
+    async function loadAssetsMeta() {
+      try {
+        const data = await fetchJSON("/assets");
+        // Expect { assets: { id: { id, name, category, data_source }, ... } }
+        state.assetsMeta = data.assets || {};
+      } catch (err) {
+        console.error("Failed to load assets metadata:", err);
+        state.assetsMeta = {};
+      }
+    }
+
+    async function loadConfidenceBreakdown() {
+      // Use full breakdown so we have categories & Polymarket inside.
+      return fetchJSON("/confidence");
+    }
+
+    // --------------------------
+    // Rendering: overall meter
+    // --------------------------
+    function renderOverallMeter(overallScore, polymarketSentimentScore) {
+      const barFill = document.getElementById("overall-bar-fill");
+      const scoreText = document.getElementById("overall-score-text");
+      const scoreSub = document.getElementById("overall-score-sub");
+
+      const cleanScore = isNaN(overallScore) ? 0 : Math.max(0, Math.min(100, overallScore));
+
+      if (barFill) {
+        barFill.style.width = cleanScore + "%";
+        const colorCfg = overallColorForScore(cleanScore);
+        barFill.style.background = colorCfg.bg;
+        barFill.style.boxShadow = colorCfg.shadow;
+      }
+
+      if (scoreText) {
+        scoreText.textContent = cleanScore.toFixed(1).replace(/\.0$/, "") + "%";
+      }
+
+      if (scoreSub) {
+        if (!isNaN(polymarketSentimentScore)) {
+          const deviation = polymarketSentimentScore - 50;
+          let directionLabel = "neutral Polymarket sentiment";
+          if (deviation > 3) {
+            directionLabel = "Polymarket leaning bullish";
+          } else if (deviation < -3) {
+            directionLabel = "Polymarket leaning cautious";
+          }
+          scoreSub.textContent = directionLabel;
+        } else {
+          scoreSub.textContent = "Live confidence from all tracked markets";
+        }
+      }
+
+      setElementText("last-updated", "Last updated: " + formatTimestampDate(new Date()));
+    }
+
+    // --------------------------
+    // Rendering: category cards
+    // --------------------------
+    function renderCategoryCards(categories) {
+      const container = document.getElementById("category-cards");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const keys = Object.keys(categories || {});
+      // enforce a nice order but still show any extra categories at the end
+      const orderedKeys = [
+        ...categoryOrder.filter((c) => keys.includes(c)),
+        ...keys.filter((k) => !categoryOrder.includes(k)),
+      ];
+
+      for (const categoryKey of orderedKeys) {
+        const cat = categories[categoryKey];
+        if (!cat) continue;
+
+        const displayName = categoryDisplayNames[categoryKey] || categoryKey;
+        const score = cat.score ?? 0;
+        const scoreFormatted = formatPercent(score);
+        const scorePercent = isNaN(score) ? 0 : Math.max(0, Math.min(100, score));
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const header = document.createElement("div");
+        header.className = "card-header";
+
+        const title = document.createElement("span");
+        title.className = "card-title";
+        title.textContent = displayName;
+
+        const scoreSpan = document.createElement("span");
+        scoreSpan.className = "card-score";
+        scoreSpan.textContent = scoreFormatted;
+
+        header.appendChild(title);
+        header.appendChild(scoreSpan);
+        card.appendChild(header);
+
+        const miniBar = document.createElement("div");
+        miniBar.className = "mini-bar";
+        const miniFill = document.createElement("div");
+        miniFill.className = "mini-bar-fill";
+
+        const colorCfg = overallColorForScore(scorePercent);
+        miniFill.style.width = scorePercent + "%";
+        miniFill.style.background = colorCfg.bg;
+        miniBar.appendChild(miniFill);
+        card.appendChild(miniBar);
+
+        const detailLine = document.createElement("div");
+        detailLine.className = "card-detail-line";
+        const detailLabel = document.createElement("span");
+        detailLabel.textContent = "Weight in overall confidence";
+        const detailValue = document.createElement("span");
+        detailValue.className = "value";
+
+        // We don't know category weight here, but we can hint its qualitative importance.
+        if (categoryKey === "equities") {
+          detailValue.textContent = "High (core driver)";
+        } else if (categoryKey === "crypto") {
+          detailValue.textContent = "Moderate (risk sentiment)";
+        } else if (categoryKey === "gold" || categoryKey === "bonds") {
+          detailValue.textContent = "Defensive (risk-off hedge)";
+        } else if (categoryKey === "housing" || categoryKey === "usd") {
+          detailValue.textContent = "Macro backdrop";
+        } else {
+          detailValue.textContent = "Additional signal";
+        }
+
+        detailLine.appendChild(detailLabel);
+        detailLine.appendChild(detailValue);
+        card.appendChild(detailLine);
+
+        const assetsContainer = document.createElement("div");
+        assetsContainer.className = "card-assets";
+
+        const assets = cat.assets || {};
+        const assetIds = Object.keys(assets);
+
+        if (assetIds.length === 0) {
+          const emptyRow = document.createElement("div");
+          emptyRow.className = "asset-row";
+          emptyRow.textContent = "No assets configured yet.";
+          assetsContainer.appendChild(emptyRow);
+        } else {
+          assetIds.forEach((assetId) => {
+            const asset = assets[assetId];
+            const meta = state.assetsMeta[assetId] || {};
+            const row = document.createElement("div");
+            row.className = "asset-row";
+
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "asset-name";
+            nameSpan.textContent = meta.name || assetId.toUpperCase();
+
+            const rightWrapper = document.createElement("span");
+            const scoreSpan = document.createElement("span");
+            scoreSpan.className = "asset-score";
+            scoreSpan.textContent = formatPercent(asset.score);
+
+            const priceSpan = document.createElement("span");
+            priceSpan.className = "asset-price";
+            const price = asset.raw_data?.latest_price;
+            priceSpan.textContent = formatPrice(price);
+
+            rightWrapper.appendChild(scoreSpan);
+            rightWrapper.appendChild(priceSpan);
+
+            row.appendChild(nameSpan);
+            row.appendChild(rightWrapper);
+            assetsContainer.appendChild(row);
+          });
+        }
+
+        card.appendChild(assetsContainer);
+        container.appendChild(card);
+      }
+    }
+
+    // --------------------------
+    // Rendering: Polymarket
+    // --------------------------
+    function renderPolymarketSentiment(pmSentiment) {
+      if (!pmSentiment) return;
+
+      const score = pmSentiment.aggregate_sentiment_score ?? 50;
+      const bar = document.getElementById("pm-aggregate-bar");
+      const scoreSpan = document.getElementById("pm-aggregate-score");
+
+      const scoreClean = isNaN(score) ? 50 : Math.max(0, Math.min(100, score));
+
+      if (bar) {
+        bar.style.width = scoreClean + "%";
+        const colorCfg = overallColorForScore(scoreClean);
+        bar.style.background = colorCfg.bg;
+      }
+      if (scoreSpan) {
+        scoreSpan.textContent = formatPercent(scoreClean);
+      }
+
+      const listContainer = document.getElementById("pm-markets-list");
+      if (!listContainer) return;
+      listContainer.innerHTML = "";
+
+      const markets = pmSentiment.markets || {};
+      const ids = Object.keys(markets);
+      if (ids.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.fontSize = "0.8rem";
+        empty.style.color = "var(--text-muted)";
+        empty.textContent =
+          "No Polymarket markets loaded yet. Confirm API slugs in the backend config.";
+        listContainer.appendChild(empty);
+        return;
+      }
+
+      ids.forEach((id) => {
+        const m = markets[id];
+        const row = document.createElement("div");
+        row.className = "pm-row";
+
+        const name = document.createElement("div");
+        name.className = "pm-name";
+        name.textContent = m.name || id;
+
+        const prob = document.createElement("div");
+        prob.className = "pm-prob";
+        prob.textContent = formatPercent(m.probability * 100);
+
+        const impact = document.createElement("div");
+        impact.className = "pm-impact";
+        impact.textContent = "Impact ×" + (m.impact || 1).toFixed(1);
+
+        row.appendChild(name);
+        row.appendChild(prob);
+        row.appendChild(impact);
+
+        listContainer.appendChild(row);
+      });
+    }
+
+    // --------------------------
+    // User feedback (bottom bar)
+    // --------------------------
+    function loadFeedbackFromStorage() {
+      try {
+        const raw = localStorage.getItem(feedbackStorageKey);
+        if (!raw) {
+          return { count: 0, sum: 0 };
+        }
+        const parsed = JSON.parse(raw);
+        if (
+          typeof parsed.count === "number" &&
+          typeof parsed.sum === "number" &&
+          parsed.count >= 0 &&
+          parsed.sum >= 0
+        ) {
+          return parsed;
+        }
+        return { count: 0, sum: 0 };
+      } catch {
+        return { count: 0, sum: 0 };
+      }
+    }
+
+    function saveFeedbackToStorage(count, sum) {
+      try {
+        localStorage.setItem(
+          feedbackStorageKey,
+          JSON.stringify({ count, sum })
+        );
+      } catch {
+        // ignore
+      }
+    }
+
+    function updateFeedbackUI() {
+      const { count, sum } = loadFeedbackFromStorage();
+      const avg = count > 0 ? sum / count : 0;
+      setElementText("feedback-count", String(count));
+      setElementText("feedback-average", formatPercent(avg));
+      const barFill = document.getElementById("feedback-bar-fill");
+      if (barFill) {
+        barFill.style.width = Math.max(0, Math.min(100, avg)) + "%";
+      }
+    }
+
+    function setupFeedbackControls() {
+      const slider = document.getElementById("feedback-slider");
+      const sliderLabel = document.getElementById("user-slider-value");
+      const button = document.getElementById("submit-feedback");
+
+      if (!slider || !sliderLabel || !button) return;
+
+      slider.addEventListener("input", () => {
+        sliderLabel.textContent = slider.value;
+      });
+
+      button.addEventListener("click", () => {
+        const value = Number(slider.value);
+        if (isNaN(value)) return;
+        const clamped = Math.max(0, Math.min(100, value));
+        const existing = loadFeedbackFromStorage();
+        const newCount = existing.count + 1;
+        const newSum = existing.sum + clamped;
+        saveFeedbackToStorage(newCount, newSum);
+        updateFeedbackUI();
+      });
+
+      updateFeedbackUI();
+    }
+
+    // --------------------------
+    // Main orchestrator
+    // --------------------------
+    async function refreshDashboard() {
+      try {
+        showError("top-error", "");
+        const breakdown = await loadConfidenceBreakdown();
+
+        const overall = breakdown.overall;
+        const categories = breakdown.categories || {};
+        const pmSentiment = breakdown.polymarket_sentiment || null;
+
+        renderOverallMeter(
+          overall,
+          pmSentiment ? pmSentiment.aggregate_sentiment_score : NaN
+        );
+        renderCategoryCards(categories);
+        renderPolymarketSentiment(pmSentiment);
+      } catch (err) {
+        console.error("Failed to load confidence breakdown:", err);
+        showError(
+          "top-error",
+          "Unable to update from backend right now. Showing last known values."
+        );
+      }
+    }
+
+    async function initializeApp() {
+      setupFeedbackControls();
+      await loadAssetsMeta();
+      await refreshDashboard();
+      setInterval(refreshDashboard, REFRESH_MS);
+    }
+
+    document.addEventListener("DOMContentLoaded", initializeApp);
+  </script>
+</body>
+</html>
