@@ -44,3 +44,43 @@ class SimpleCache:
 
 # Single global instance for simplicity
 cache = SimpleCache()
+
+_CACHE: Dict[str, Tuple[float, Any]] = {}
+
+
+def cache_get(key: str) -> Optional[Any]:
+    """
+    Get a cached value by key.
+
+    Returns:
+        - The cached value if present and not expired
+        - None if the key is missing or expired
+    """
+    entry = _CACHE.get(key)
+    if entry is None:
+        return None
+
+    expires_at, value = entry
+    now = time.time()
+    if expires_at < now:
+        # Expired: remove and return None
+        _CACHE.pop(key, None)
+        return None
+
+    return value
+
+
+def cache_set(key: str, value: Any, ttl_seconds: int) -> None:
+    """
+    Store a value in the cache with a time-to-live in seconds.
+    """
+    expires_at = time.time() + float(ttl_seconds)
+    _CACHE[key] = (expires_at, value)
+
+
+def cache_clear() -> None:
+    """
+    Clear all entries from the cache.
+    Useful in tests or if you want to force a reset.
+    """
+    _CACHE.clear()

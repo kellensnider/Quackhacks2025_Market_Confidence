@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.services.polymarket_service import (
-    get_all_polymarket_sentiment,
+    get_polymarket_sentiment,
     PolymarketMarketSentiment,
 )
 from src.services.confidence_engine import PolymarketSentiment
@@ -24,7 +24,7 @@ async def list_polymarket_markets():
     """
     Return raw Polymarket sentiment for each tracked market.
     """
-    markets = await get_all_polymarket_sentiment()
+    markets = await get_polymarket_sentiment()
     return PolymarketListResponse(markets=markets)
 
 

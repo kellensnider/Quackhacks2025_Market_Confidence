@@ -51,7 +51,7 @@ class PolymarketMarketConfig(BaseModel):
     name: str                  # human-readable
     slug: str                  # polymarket slug / identifier (approx)
     direction: PolymarketDirection
-    impact_weight: float       # relative impact in aggregate sentiment
+    impact_weight: float = 1.0      # relative impact in aggregate sentiment
 
 
 # ---- Asset configuration ----
@@ -140,26 +140,26 @@ for a in ASSETS.values():
 
 POLYMARKET_MARKETS: Dict[str, PolymarketMarketConfig] = {
     "recession_2025": PolymarketMarketConfig(
-        id="recession_2025",
-        name="US Recession by 2025",
-        slug="us-recession-by-2025",  # TODO: replace with real slug
-        direction=PolymarketDirection.NEGATIVE,  # higher prob => lower confidence
+        id="bitcoin_today",
+        name="Bitcoin Up or Down on November 16?",
+        slug="bitcoin-up-or-down-on-november-16",  # TODO: replace with real slug
+        direction=PolymarketDirection.POSITIVE,  # higher prob => lower confidence
         impact_weight=1.0,
-    ),
-    "sp500_up_year": PolymarketMarketConfig(
-        id="sp500_up_year",
-        name="S&P 500 Up This Year",
-        slug="sp500-up-this-year",    # TODO: replace with real slug
-        direction=PolymarketDirection.POSITIVE,
-        impact_weight=1.2,
-    ),
-    "major_crash": PolymarketMarketConfig(
-        id="major_crash",
-        name="Major Market Crash",
-        slug="major-market-crash",   # TODO: replace with real slug
-        direction=PolymarketDirection.NEGATIVE,
-        impact_weight=1.5,
-    ),
+    )#,
+#    "sp500_up_year": PolymarketMarketConfig(
+#        id="sp500_up_year",
+#        name="S&P 500 Up This Year",
+#        slug="sp500-up-this-year",    # TODO: replace with real slug
+#        direction=PolymarketDirection.POSITIVE,
+#        impact_weight=1.2,
+#    ),
+#    "major_crash": PolymarketMarketConfig(
+#        id="major_crash",
+#        name="Major Market Crash",
+#        slug="major-market-crash",   # TODO: replace with real slug
+#        direction=PolymarketDirection.NEGATIVE,
+#        impact_weight=1.5,
+#    ),
 }
 
 # HOW TO ADD A NEW ASSET:

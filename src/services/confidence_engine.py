@@ -9,7 +9,7 @@ from src.config.weights import ASSET_WEIGHTS, CATEGORY_WEIGHTS, POLYMARKET_WEIGH
 from src.services.market_data_service import get_historical_series, MarketDataPoint
 from src.services.indicator_service import compute_indicators, Indicators
 from src.services.polymarket_service import (
-    get_all_polymarket_sentiment,
+    get_polymarket_sentiment,
     PolymarketMarketSentiment,
 )
 from src.services.cache import cache
@@ -133,15 +133,21 @@ async def build_confidence_breakdown(lookback_days: int = 30) -> ConfidenceBreak
         )
 
     # 3) Polymarket sentiment
-    polymarket_markets = await get_all_polymarket_sentiment()
+    
 
-    # Weighted average of probabilities (0–1) -> 0–100
+# Inside build_confidence_breakdown, AFTER you have your base/category scores:
+    polymarket_sentiment = await get_polymarket_sentiment()
+    polymarket_markets = polymarket_sentiment.markets  # Dict[str, PolymarketMarketSentiment]
+
+# Weighted average of probabilities (0–1) -> 0–100
     if polymarket_markets:
         prob_scores: Dict[str, float] = {
-            mid: m.probability for mid, m in polymarket_markets.items()
+            mid: m.probability
+            for mid, m in polymarket_markets.items()
         }
         prob_weights: Dict[str, float] = {
-            mid: m.impact for mid, m in polymarket_markets.items()
+            mid: m.impact
+            for mid, m in polymarket_markets.items()
         }
         agg_prob_0_1 = _weighted_average(prob_scores, prob_weights)
     else:
@@ -149,10 +155,12 @@ async def build_confidence_breakdown(lookback_days: int = 30) -> ConfidenceBreak
 
     aggregate_sentiment_score = to_percentage(agg_prob_0_1)
 
+    # Rebuild a clean PolymarketSentiment with our aggregate score
     polymarket_sentiment = PolymarketSentiment(
         markets=polymarket_markets,
         aggregate_sentiment_score=aggregate_sentiment_score,
     )
+
 
     # 4) Overall score
     # Base score = weighted average of category scores (0–100)
