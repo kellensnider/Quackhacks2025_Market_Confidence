@@ -4,8 +4,21 @@ from __future__ import annotations
 from typing import Dict, Optional
 from pydantic import BaseModel
 
-from src.config.assets import ASSETS, CATEGORY_TO_ASSETS, AssetCategory
-from src.config.weights import ASSET_WEIGHTS, CATEGORY_WEIGHTS, POLYMARKET_WEIGHTS
+#from src.config.assets import ASSETS, CATEGORY_TO_ASSETS, AssetCategory
+from src.config.assets import (
+    ASSETS,
+    CATEGORY_TO_ASSETS,
+    AssetCategory,
+    AssetDirection,   # 👈 NEW
+)
+
+from src.config.weights import (
+    ASSET_WEIGHTS,
+    CATEGORY_WEIGHTS,
+    POLYMARKET_WEIGHTS,
+  # 
+)
+
 from src.services.market_data_service import get_historical_series, MarketDataPoint
 from src.services.indicator_service import compute_indicators, Indicators
 from src.services.polymarket_service import (
@@ -44,19 +57,35 @@ class ConfidenceBreakdown(BaseModel):
     polymarket_sentiment: PolymarketSentiment
 
 
-def _compute_asset_score(indicators: Indicators) -> float:
+
+def _compute_asset_score(indicators: Indicators, direction: AssetDirection) -> float:
     """
     Combine normalized indicators into a single per-asset score in [0,100].
 
-    Simple formula:
-        score_0_1 = 0.5*momentum + 0.3*trend + 0.2*volatility
+    Base formula (0–1):
+        raw = 0.5*momentum + 0.3*trend + 0.2*volatility
+
+    Then:
+      - For RISK_ON assets: strong = good → use raw as-is.
+      - For RISK_OFF assets (hedges like gold, bonds, USD):
+          strong = fear/hedge demand → invert (1 - raw).
     """
-    score_0_1 = (
+    raw = (
         0.5 * indicators.momentum
         + 0.3 * indicators.trend
         + 0.2 * indicators.volatility
     )
-    return to_percentage(score_0_1)
+
+    # Clamp to [0, 1] just in case
+    raw = max(0.0, min(1.0, raw))
+
+    if direction == AssetDirection.RISK_ON:
+        effective = raw
+    else:  # RISK_OFF
+        effective = 1.0 - raw
+
+    return to_percentage(effective)
+
 
 
 def _weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> float:
@@ -102,7 +131,7 @@ async def build_confidence_breakdown(lookback_days: int = 30) -> ConfidenceBreak
                 raw_data={"latest_price": series[-1].price if series else 0.0},
             )
         else:
-            asset_score = _compute_asset_score(indicators)
+            asset_score = _compute_asset_score(indicators, cfg.direction)
             latest_price = series[-1].price if series else 0.0
             # For now, we store just price; you could add return_30d etc.
             asset_confidence = AssetConfidence(
@@ -171,14 +200,37 @@ async def build_confidence_breakdown(lookback_days: int = 30) -> ConfidenceBreak
         cat_weight_map[cat_enum.value] = cfg.weight
 
     base_overall = _weighted_average(cat_score_map, cat_weight_map)
+    '''
+    extreme_adjustment = 0.0
 
+    for cat_enum, cfg in CATEGORY_EXTREMES.items():
+        cat_key = cat_enum.value
+        cat = category_confidences.get(cat_key)
+        if not cat:
+            continue
+
+        s = cat.score  # 0–100
+
+        # BELOW low_threshold → negative adjustment
+        if s < cfg.low_threshold:
+            severity = (cfg.low_threshold - s) / cfg.low_threshold  # 0..1
+            extreme_adjustment -= severity * cfg.max_negative_adjustment * cfg.weight_factor
+
+        # ABOVE high_threshold → positive adjustment
+        elif s > cfg.high_threshold:
+            severity = (s - cfg.high_threshold) / (100.0 - cfg.high_threshold)  # 0..1
+            extreme_adjustment += severity * cfg.max_positive_adjustment * cfg.weight_factor
+
+    # Apply on top of sentiment-adjusted score, but clamp
+    base_overall = max(0.0, min(100.0, overall_score + extreme_adjustment))
+    '''
     # Sentiment adjustment: map sentiment (0–100) into [-max_adj, +max_adj]
     # where 50 => 0, >50 => positive, <50 => negative.
     sentiment_deviation = (aggregate_sentiment_score - 50.0) / 50.0  # [-1, 1]
     adjustment = sentiment_deviation * POLYMARKET_WEIGHTS.max_adjustment_points
     # Additionally scale by overall_sentiment_weight (so it doesn't dominate)
     adjustment *= POLYMARKET_WEIGHTS.overall_sentiment_weight
-
+    
     overall_score = max(0.0, min(100.0, base_overall + adjustment))
 
     breakdown = ConfidenceBreakdown(

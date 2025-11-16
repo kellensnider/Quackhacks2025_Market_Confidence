@@ -11,6 +11,9 @@ class DataSource(str, Enum):
     YFINANCE = "yfinance"
     POLYMARKET = "polymarket"
 
+class AssetDirection(str, Enum):
+    RISK_ON = "risk_on"
+    RISK_OFF = "risk_off"  # hedges
 
 class AssetCategory(str, Enum):
     EQUITIES = "equities"
@@ -36,6 +39,7 @@ class AssetConfig(BaseModel):
     yfinance_symbol: Optional[str] = None
     # Optional display order for frontend
     display_order: int = 0
+    direction: AssetDirection = AssetDirection.RISK_ON
 
 
 class PolymarketDirection(str, Enum):
@@ -101,6 +105,7 @@ ASSETS: Dict[str, AssetConfig] = {
         data_source=DataSource.YFINANCE,
         yfinance_symbol="GLD",
         display_order=1,
+        direction=AssetDirection.RISK_OFF,
     ),
     "tlt": AssetConfig(
         id="tlt",
@@ -109,6 +114,7 @@ ASSETS: Dict[str, AssetConfig] = {
         data_source=DataSource.YFINANCE,
         yfinance_symbol="TLT",
         display_order=1,
+        direction=AssetDirection.RISK_OFF,
     ),
     # Housing
     "xhb": AssetConfig(
@@ -127,6 +133,7 @@ ASSETS: Dict[str, AssetConfig] = {
         data_source=DataSource.YFINANCE,
         yfinance_symbol="UUP",
         display_order=1,
+        direction=AssetDirection.RISK_OFF,
     ),
 }
 
@@ -145,21 +152,21 @@ POLYMARKET_MARKETS: Dict[str, PolymarketMarketConfig] = {
         slug="bitcoin-up-or-down-on-november-16",  # TODO: replace with real slug
         direction=PolymarketDirection.POSITIVE,  # higher prob => lower confidence
         impact_weight=1.0,
-    )#,
-#    "sp500_up_year": PolymarketMarketConfig(
-#        id="sp500_up_year",
-#        name="S&P 500 Up This Year",
-#        slug="sp500-up-this-year",    # TODO: replace with real slug
-#        direction=PolymarketDirection.POSITIVE,
-#        impact_weight=1.2,
-#    ),
-#    "major_crash": PolymarketMarketConfig(
-#        id="major_crash",
-#        name="Major Market Crash",
-#        slug="major-market-crash",   # TODO: replace with real slug
-#        direction=PolymarketDirection.NEGATIVE,
-#        impact_weight=1.5,
-#    ),
+    ),
+    "sp500_up_today": PolymarketMarketConfig(
+        id="sp500_up_today",
+        name="S&P 500 Up Today",
+        slug="spx-up-or-down-on-november-17-2025",    # TODO: replace with real slug
+        direction=PolymarketDirection.POSITIVE,
+        impact_weight=1.2,
+    ),
+    "us-recession-2026": PolymarketMarketConfig(
+        id="us-recession-2026",
+        name="NO US Recession in 2026",
+        slug="us-recession-by-end-of-2026",   # TODO: replace with real slug
+        direction=PolymarketDirection.NEGATIVE,
+        impact_weight=1.2,
+    ),
 }
 
 # HOW TO ADD A NEW ASSET:

@@ -61,6 +61,31 @@ CATEGORY_WEIGHTS: Dict[AssetCategory, CategoryWeightConfig] = {
 
 POLYMARKET_WEIGHTS = PolymarketWeights()
 
+class CategoryExtremeConfig(BaseModel):
+    low_threshold: float = 10.0    # below this → “tank” behavior kicks in
+    high_threshold: float = 90.0   # above this → “boost” behavior kicks in
+    max_negative_adjustment: float = 8.0  # max points this category can drag
+    max_positive_adjustment: float = 8.0  # max points this category can boost
+    weight_factor: float = 1.0     # optional: how important this extreme is
+
+CATEGORY_EXTREMES = {
+    AssetCategory.HOUSING: CategoryExtremeConfig(
+        low_threshold=10.0,
+        high_threshold=90.0,
+        max_negative_adjustment=10.0,
+        max_positive_adjustment=10.0,
+        weight_factor=1.2,  # housing extremes matter a bit more
+    ),
+    AssetCategory.EQUITIES: CategoryExtremeConfig(
+        low_threshold=15.0,
+        high_threshold=85.0,
+        max_negative_adjustment=8.0,
+        max_positive_adjustment=6.0,
+        weight_factor=1.0,
+    ),
+    # others if you want, or just leave them out
+}
+
 # HOW TO TWEAK:
 # - To change the influence of an asset within its category:
 #     ASSET_WEIGHTS["spy"].weight = 2.0
