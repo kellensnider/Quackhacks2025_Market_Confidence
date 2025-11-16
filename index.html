@@ -24,6 +24,18 @@
         "Segoe UI", sans-serif;
     }
 
+    .simple-nav-link {
+  font-size: 0.9rem;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+    }
+
+    .simple-nav-link:hover {
+  opacity: 0.8;
+    }
+
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -538,7 +550,7 @@
 <body>
   <header>
     <div class="brand-row">
-      <h1>Market Confidence Meter</h1>
+      <h1>Market Confidence Meter</h1> <a href="history.html" class="simple-nav-link">History</a>
       <div class="tagline">
         Live confidence in the U.S. market, powered by prices&nbsp;&amp;&nbsp;Polymarket.
       </div>
@@ -673,7 +685,7 @@
     // --------------------------
     // Global state & config
     // --------------------------
-    const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = "http://127.0.0.1:8001";
 
     const REFRESH_MS = 60_000; // 60s auto refresh
     const feedbackStorageKey = "market_confidence_feedback_v1";
@@ -791,6 +803,40 @@
       // Use full breakdown so we have categories & Polymarket inside.
       return fetchJSON("/confidence");
     }
+
+    async function fetchFeedbackStats() {
+  try {
+    const res = await fetch(API_BASE + "/feedback/today");
+    if (!res.ok) return { average: 0, count: 0 };
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to load feedback stats:", err);
+    return { average: 0, count: 0 };
+  }
+}
+
+async function submitFeedback(score) {
+  try {
+    await fetch(API_BASE + "/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score }),
+    });
+  } catch (err) {
+    console.error("Failed to submit feedback:", err);
+  }
+}
+
+async function updateFeedbackUIFromServer() {
+  const stats = await fetchFeedbackStats();
+  setElementText("feedback-count", String(stats.count));
+  setElementText("feedback-average", formatPercent(stats.average));
+  const barFill = document.getElementById("feedback-bar-fill");
+  if (barFill) {
+    barFill.style.width = Math.max(0, Math.min(100, stats.average)) + "%";
+  }
+}
+
 
     // --------------------------
     // Rendering: overall meter
@@ -1063,29 +1109,30 @@
     }
 
     function setupFeedbackControls() {
-      const slider = document.getElementById("feedback-slider");
-      const sliderLabel = document.getElementById("user-slider-value");
-      const button = document.getElementById("submit-feedback");
+  const slider = document.getElementById("feedback-slider");
+  const sliderLabel = document.getElementById("user-slider-value");
+  const button = document.getElementById("submit-feedback");
 
-      if (!slider || !sliderLabel || !button) return;
+  if (!slider || !sliderLabel || !button) return;
 
-      slider.addEventListener("input", () => {
-        sliderLabel.textContent = slider.value;
-      });
+  slider.addEventListener("input", () => {
+    sliderLabel.textContent = slider.value;
+  });
 
-      button.addEventListener("click", () => {
-        const value = Number(slider.value);
-        if (isNaN(value)) return;
-        const clamped = Math.max(0, Math.min(100, value));
-        const existing = loadFeedbackFromStorage();
-        const newCount = existing.count + 1;
-        const newSum = existing.sum + clamped;
-        saveFeedbackToStorage(newCount, newSum);
-        updateFeedbackUI();
-      });
+  button.addEventListener("click", async () => {
+    const value = Number(slider.value);
+    if (isNaN(value)) return;
+    const clamped = Math.max(0, Math.min(100, value));
 
-      updateFeedbackUI();
-    }
+    await submitFeedback(clamped);          // send to backend
+    await updateFeedbackUIFromServer();     // refresh crowd stats
+  });
+
+  // Initial load of global stats when the page first opens
+  updateFeedbackUIFromServer();
+}
+//These community scores are aggregated across all users for today and never touch the core confidence model.
+
 
     // --------------------------
     // Main orchestrator
